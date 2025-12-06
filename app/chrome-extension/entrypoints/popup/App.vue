@@ -1,59 +1,73 @@
 <template>
-  <div class="popup-container">
-    <div class="header">
-      <div class="header-content">
-        <h1 class="header-title">Chrome MCP Server</h1>
+  <div class="flex flex-col h-full min-h-[520px] max-h-[600px]">
+    <!-- Header -->
+    <header class="shrink-0 px-5 pt-5 pb-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-lg font-semibold tracking-tight">Chrome MCP</h1>
+          <p class="text-[11px] text-muted-foreground mt-0.5">Model Context Protocol Server</p>
+        </div>
+        <button
+          @click="refreshServerStatus"
+          class="h-8 w-8 flex items-center justify-center rounded-md hover:bg-accent transition-colors"
+          :title="getMessage('refreshStatusButton')"
+        >
+          <RefreshCw class="h-3.5 w-3.5 text-muted-foreground" :class="{ 'animate-spin': isRefreshing }" />
+        </button>
       </div>
-    </div>
-    <div class="content">
-      <div class="section">
-        <h2 class="section-title">{{ getMessage('nativeServerConfigLabel') }}</h2>
-        <div class="config-card">
-          <div class="status-section">
-            <div class="status-header">
-              <p class="status-label">{{ getMessage('runningStatusLabel') }}</p>
-              <button
-                class="refresh-status-button"
-                @click="refreshServerStatus"
-                :title="getMessage('refreshStatusButton')"
-              >
-                🔄
-              </button>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto px-5 pb-4 space-y-5">
+      <!-- Connection Status -->
+      <section class="animate-fade-up">
+        <div class="section-label">{{ getMessage('nativeServerConfigLabel') }}</div>
+        <Card class="p-4">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2.5">
+              <span :class="['status-dot', getStatusDotClass()]" />
+              <span class="text-sm font-medium">{{ getStatusText() }}</span>
             </div>
-            <div class="status-info">
-              <span :class="['status-dot', getStatusClass()]"></span>
-              <span class="status-text">{{ getStatusText() }}</span>
-            </div>
-            <div v-if="serverStatus.lastUpdated" class="status-timestamp">
-              {{ getMessage('lastUpdatedLabel') }}
-              {{ new Date(serverStatus.lastUpdated).toLocaleTimeString() }}
-            </div>
+            <span v-if="serverStatus.lastUpdated" class="text-[10px] text-muted-foreground tabular-nums">
+              {{ formatTime(serverStatus.lastUpdated) }}
+            </span>
           </div>
 
-          <div v-if="showMcpConfig" class="mcp-config-section">
-            <div class="mcp-config-header">
-              <p class="mcp-config-label">{{ getMessage('mcpServerConfigLabel') }}</p>
-              <button class="copy-config-button" @click="copyMcpConfig">
+          <!-- MCP Config (when connected) -->
+          <div v-if="showMcpConfig" class="mb-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] text-muted-foreground">{{ getMessage('mcpServerConfigLabel') }}</span>
+              <button
+                @click="copyMcpConfig"
+                class="text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <component :is="copyIcon" class="h-3 w-3" />
                 {{ copyButtonText }}
               </button>
             </div>
-            <div class="mcp-config-content">
-              <pre class="mcp-config-json">{{ mcpConfigJson }}</pre>
-            </div>
+            <pre class="mono bg-secondary/50 rounded-md p-3 text-[11px] overflow-x-auto">{{ mcpConfigJson }}</pre>
           </div>
-          <div class="port-section">
-            <label for="port" class="port-label">{{ getMessage('connectionPortLabel') }}</label>
-            <input
-              type="text"
-              id="port"
-              :value="nativeServerPort"
-              @input="updatePort"
-              class="port-input"
+
+          <!-- Port Input -->
+          <div class="space-y-2 mb-4">
+            <label class="text-[11px] text-muted-foreground">{{ getMessage('connectionPortLabel') }}</label>
+            <Input
+              type="number"
+              :model-value="nativeServerPort"
+              @update:model-value="updatePort"
+              class="mono"
             />
           </div>
 
-          <button class="connect-button" :disabled="isConnecting" @click="testNativeConnection">
-            <BoltIcon />
+          <!-- Connect Button -->
+          <Button
+            :disabled="isConnecting"
+            @click="testNativeConnection"
+            class="w-full"
+            :variant="nativeConnectionStatus === 'connected' ? 'secondary' : 'default'"
+          >
+            <Spinner v-if="isConnecting" size="sm" />
+            <Zap v-else class="h-3.5 w-3.5" />
             <span>{{
               isConnecting
                 ? getMessage('connectingStatus')
@@ -61,203 +75,305 @@
                   ? getMessage('disconnectButton')
                   : getMessage('connectButton')
             }}</span>
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Card>
+      </section>
 
-      <div class="section">
-        <h2 class="section-title">{{ getMessage('semanticEngineLabel') }}</h2>
-        <div class="semantic-engine-card">
-          <div class="semantic-engine-status">
-            <div class="status-info">
-              <span :class="['status-dot', getSemanticEngineStatusClass()]"></span>
-              <span class="status-text">{{ getSemanticEngineStatusText() }}</span>
+      <!-- Semantic Engine -->
+      <section class="animate-fade-up stagger-1">
+        <div class="section-label">{{ getMessage('semanticEngineLabel') }}</div>
+        <Card class="p-4">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2.5">
+              <span :class="['status-dot', getSemanticEngineStatusDotClass()]" />
+              <span class="text-sm font-medium">{{ getSemanticEngineStatusText() }}</span>
             </div>
-            <div v-if="semanticEngineLastUpdated" class="status-timestamp">
-              {{ getMessage('lastUpdatedLabel') }}
-              {{ new Date(semanticEngineLastUpdated).toLocaleTimeString() }}
+            <span v-if="semanticEngineLastUpdated" class="text-[10px] text-muted-foreground tabular-nums">
+              {{ formatTime(semanticEngineLastUpdated) }}
+            </span>
+          </div>
+
+          <!-- Progress -->
+          <div v-if="isSemanticEngineInitializing" class="mb-4">
+            <div class="flex items-center gap-2 text-sm text-muted-foreground">
+              <Spinner size="sm" />
+              <span>{{ semanticEngineInitProgress }}</span>
             </div>
           </div>
 
-          <ProgressIndicator
-            v-if="isSemanticEngineInitializing"
-            :visible="isSemanticEngineInitializing"
-            :text="semanticEngineInitProgress"
-            :showSpinner="true"
-          />
-
-          <button
-            class="semantic-engine-button"
+          <Button
             :disabled="isSemanticEngineInitializing"
             @click="initializeSemanticEngine"
+            class="w-full"
+            variant="secondary"
           >
-            <BoltIcon />
+            <Cpu class="h-3.5 w-3.5" />
             <span>{{ getSemanticEngineButtonText() }}</span>
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Card>
+      </section>
 
-      <div class="section">
-        <h2 class="section-title">{{ getMessage('embeddingModelLabel') }}</h2>
+      <!-- Model Selection -->
+      <section class="animate-fade-up stagger-2">
+        <div class="section-label">{{ getMessage('embeddingModelLabel') }}</div>
 
-        <ProgressIndicator
-          v-if="isModelSwitching || isModelDownloading"
-          :visible="isModelSwitching || isModelDownloading"
-          :text="getProgressText()"
-          :showSpinner="true"
-        />
-        <div v-if="modelInitializationStatus === 'error'" class="error-card">
-          <div class="error-content">
-            <div class="error-icon">⚠️</div>
-            <div class="error-details">
-              <p class="error-title">{{ getMessage('semanticEngineInitFailedStatus') }}</p>
-              <p class="error-message">{{
-                modelErrorMessage || getMessage('semanticEngineInitFailedStatus')
-              }}</p>
-              <p class="error-suggestion">{{ getErrorTypeText() }}</p>
+        <!-- Progress / Error -->
+        <div v-if="isModelSwitching || isModelDownloading" class="mb-3">
+          <Card class="p-3">
+            <div class="flex items-center gap-2 text-sm text-muted-foreground">
+              <Spinner size="sm" />
+              <span>{{ getProgressText() }}</span>
             </div>
-          </div>
-          <button
-            class="retry-button"
-            @click="retryModelInitialization"
-            :disabled="isModelSwitching || isModelDownloading"
-          >
-            <span>🔄</span>
-            <span>{{ getMessage('retryButton') }}</span>
-          </button>
+          </Card>
         </div>
 
-        <div class="model-list">
-          <div
+        <div v-if="modelInitializationStatus === 'error'" class="mb-3">
+          <Card class="p-3 border-destructive/50">
+            <div class="flex items-start gap-3">
+              <AlertTriangle class="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-destructive">{{ getMessage('semanticEngineInitFailedStatus') }}</p>
+                <p class="text-[11px] text-muted-foreground mt-0.5">{{ getErrorTypeText() }}</p>
+              </div>
+              <Button size="sm" variant="ghost" @click="retryModelInitialization" :disabled="isModelSwitching">
+                <RotateCcw class="h-3 w-3" />
+              </Button>
+            </div>
+          </Card>
+        </div>
+
+        <!-- Model List -->
+        <div class="space-y-2">
+          <Card
             v-for="model in availableModels"
             :key="model.preset"
             :class="[
-              'model-card',
-              {
-                selected: currentModel === model.preset,
-                disabled: isModelSwitching || isModelDownloading,
-              },
+              'p-3 cursor-pointer transition-all duration-200 hover:border-foreground/20',
+              currentModel === model.preset ? 'border-foreground/40 bg-accent/50' : '',
+              (isModelSwitching || isModelDownloading) ? 'opacity-50 pointer-events-none' : ''
             ]"
-            @click="
-              !isModelSwitching && !isModelDownloading && switchModel(model.preset as ModelPreset)
-            "
+            @click="!isModelSwitching && !isModelDownloading && switchModel(model.preset as ModelPreset)"
           >
-            <div class="model-header">
-              <div class="model-info">
-                <p class="model-name" :class="{ 'selected-text': currentModel === model.preset }">
-                  {{ model.preset }}
-                </p>
-                <p class="model-description">{{ getModelDescription(model) }}</p>
-              </div>
-              <div v-if="currentModel === model.preset" class="check-icon">
-                <CheckIcon class="text-white" />
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-medium">{{ model.preset }}</span>
+                  <div v-if="currentModel === model.preset" class="h-4 w-4 rounded-full bg-foreground flex items-center justify-center">
+                    <Check class="h-2.5 w-2.5 text-background" />
+                  </div>
+                </div>
+                <p class="text-[11px] text-muted-foreground mt-0.5">{{ getModelDescription(model) }}</p>
               </div>
             </div>
-            <div class="model-tags">
-              <span class="model-tag performance">{{ getPerformanceText(model.performance) }}</span>
-              <span class="model-tag size">{{ model.size }}</span>
-              <span class="model-tag dimension">{{ model.dimension }}D</span>
+            <div class="flex items-center gap-1.5 mt-2.5">
+              <Badge variant="success">{{ getPerformanceText(model.performance) }}</Badge>
+              <Badge variant="secondary">{{ model.size }}</Badge>
+              <Badge variant="outline">{{ model.dimension }}D</Badge>
             </div>
+          </Card>
+        </div>
+      </section>
+
+      <!-- Index Statistics -->
+      <section class="animate-fade-up stagger-3">
+        <div class="section-label">{{ getMessage('indexDataManagementLabel') }}</div>
+        <div class="grid grid-cols-2 gap-2">
+          <Card class="p-3">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] text-muted-foreground uppercase tracking-wider">{{ getMessage('indexedPagesLabel') }}</span>
+              <FileText class="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <span class="stat-value">{{ storageStats?.indexedPages || 0 }}</span>
+          </Card>
+
+          <Card class="p-3">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] text-muted-foreground uppercase tracking-wider">{{ getMessage('indexSizeLabel') }}</span>
+              <Database class="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <span class="stat-value">{{ formatIndexSize() }}</span>
+          </Card>
+
+          <Card class="p-3">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] text-muted-foreground uppercase tracking-wider">{{ getMessage('activeTabsLabel') }}</span>
+              <Layers class="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <span class="stat-value">{{ getActiveTabsCount() }}</span>
+          </Card>
+
+          <Card class="p-3">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] text-muted-foreground uppercase tracking-wider">{{ getMessage('vectorDocumentsLabel') }}</span>
+              <Box class="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <span class="stat-value">{{ storageStats?.totalDocuments || 0 }}</span>
+          </Card>
+        </div>
+
+        <!-- Clear Data Progress -->
+        <div v-if="isClearingData && clearDataProgress" class="mt-3">
+          <div class="flex items-center gap-2 text-sm text-muted-foreground">
+            <Spinner size="sm" />
+            <span>{{ clearDataProgress }}</span>
           </div>
         </div>
-      </div>
 
-      <div class="section">
-        <h2 class="section-title">{{ getMessage('indexDataManagementLabel') }}</h2>
-        <div class="stats-grid">
-          <div class="stats-card">
-            <div class="stats-header">
-              <p class="stats-label">{{ getMessage('indexedPagesLabel') }}</p>
-              <span class="stats-icon violet">
-                <DocumentIcon />
-              </span>
-            </div>
-            <p class="stats-value">{{ storageStats?.indexedPages || 0 }}</p>
-          </div>
-
-          <div class="stats-card">
-            <div class="stats-header">
-              <p class="stats-label">{{ getMessage('indexSizeLabel') }}</p>
-              <span class="stats-icon teal">
-                <DatabaseIcon />
-              </span>
-            </div>
-            <p class="stats-value">{{ formatIndexSize() }}</p>
-          </div>
-
-          <div class="stats-card">
-            <div class="stats-header">
-              <p class="stats-label">{{ getMessage('activeTabsLabel') }}</p>
-              <span class="stats-icon blue">
-                <TabIcon />
-              </span>
-            </div>
-            <p class="stats-value">{{ getActiveTabsCount() }}</p>
-          </div>
-
-          <div class="stats-card">
-            <div class="stats-header">
-              <p class="stats-label">{{ getMessage('vectorDocumentsLabel') }}</p>
-              <span class="stats-icon green">
-                <VectorIcon />
-              </span>
-            </div>
-            <p class="stats-value">{{ storageStats?.totalDocuments || 0 }}</p>
-          </div>
-        </div>
-        <ProgressIndicator
-          v-if="isClearingData && clearDataProgress"
-          :visible="isClearingData"
-          :text="clearDataProgress"
-          :showSpinner="true"
-        />
-
-        <button
-          class="danger-button"
+        <Button
+          variant="destructive"
+          class="w-full mt-3"
           :disabled="isClearingData"
           @click="showClearConfirmation = true"
         >
-          <TrashIcon />
+          <Trash2 class="h-3.5 w-3.5" />
           <span>{{ isClearingData ? getMessage('clearingStatus') : getMessage('clearAllDataButton') }}</span>
-        </button>
+        </Button>
+      </section>
+
+      <!-- Cache Management -->
+      <section class="animate-fade-up stagger-4">
+        <div class="section-label">{{ getMessage('modelCacheManagementLabel') }}</div>
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <Card class="p-3">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] text-muted-foreground uppercase tracking-wider">{{ getMessage('cacheSizeLabel') }}</span>
+              <HardDrive class="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <span class="stat-value">{{ cacheStats?.totalSizeMB || 0 }}<span class="text-sm font-normal text-muted-foreground ml-0.5">MB</span></span>
+          </Card>
+
+          <Card class="p-3">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] text-muted-foreground uppercase tracking-wider">{{ getMessage('cacheEntriesLabel') }}</span>
+              <Package class="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <span class="stat-value">{{ cacheStats?.entryCount || 0 }}</span>
+          </Card>
+        </div>
+
+        <!-- Cache Entries -->
+        <div v-if="cacheStats && cacheStats.entries.length > 0" class="space-y-1.5 mb-3">
+          <Card v-for="entry in cacheStats.entries" :key="entry.url" class="p-2.5">
+            <div class="flex items-center justify-between">
+              <span class="mono text-[11px] truncate flex-1">{{ getModelNameFromUrl(entry.url) }}</span>
+              <div class="flex items-center gap-2 ml-2 shrink-0">
+                <Badge variant="secondary">{{ entry.sizeMB }}MB</Badge>
+                <span class="text-[10px] text-muted-foreground">{{ entry.age }}</span>
+                <Badge v-if="entry.expired" variant="warning">{{ getMessage('expiredLabel') }}</Badge>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        <div v-else-if="cacheStats && cacheStats.entries.length === 0" class="mb-3">
+          <Card class="p-4 text-center">
+            <p class="text-sm text-muted-foreground">{{ getMessage('noCacheDataMessage') }}</p>
+          </Card>
+        </div>
+
+        <!-- Cache Progress -->
+        <div v-if="isManagingCache" class="mb-3">
+          <div class="flex items-center gap-2 text-sm text-muted-foreground">
+            <Spinner size="sm" />
+            <span>{{ getMessage('processingCacheStatus') }}</span>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <Button
+            variant="secondary"
+            class="flex-1"
+            :disabled="isManagingCache"
+            @click="cleanupCache"
+          >
+            <Eraser class="h-3.5 w-3.5" />
+            <span>{{ getMessage('cleanExpiredCacheButton') }}</span>
+          </Button>
+          <Button
+            variant="destructive"
+            class="flex-1"
+            :disabled="isManagingCache"
+            @click="clearAllCache"
+          >
+            <Trash2 class="h-3.5 w-3.5" />
+            <span>{{ getMessage('clearAllCacheButton') }}</span>
+          </Button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="shrink-0 px-5 py-3 border-t border-border">
+      <p class="text-[10px] text-muted-foreground text-center tracking-wide">
+        Chrome MCP Server v{{ version }}
+      </p>
+    </footer>
+
+    <!-- Clear Data Confirmation Dialog -->
+    <Dialog :open="showClearConfirmation" :title="getMessage('confirmClearDataTitle')" @close="hideClearDataConfirmation">
+      <div class="space-y-4">
+        <p class="text-sm text-muted-foreground">{{ getMessage('clearDataWarningMessage') }}</p>
+
+        <ul class="space-y-1.5 text-sm text-muted-foreground pl-4">
+          <li class="flex items-center gap-2">
+            <span class="h-1 w-1 rounded-full bg-muted-foreground" />
+            {{ getMessage('clearDataList1') }}
+          </li>
+          <li class="flex items-center gap-2">
+            <span class="h-1 w-1 rounded-full bg-muted-foreground" />
+            {{ getMessage('clearDataList2') }}
+          </li>
+          <li class="flex items-center gap-2">
+            <span class="h-1 w-1 rounded-full bg-muted-foreground" />
+            {{ getMessage('clearDataList3') }}
+          </li>
+        </ul>
+
+        <Card class="p-3 border-destructive/30 bg-destructive/5">
+          <p class="text-[11px] text-destructive font-medium">{{ getMessage('clearDataIrreversibleWarning') }}</p>
+        </Card>
+
+        <div class="flex gap-2 pt-2">
+          <Button variant="secondary" class="flex-1" @click="hideClearDataConfirmation">
+            {{ getMessage('cancelButton') }}
+          </Button>
+          <Button
+            variant="destructive"
+            class="flex-1"
+            :disabled="isClearingData"
+            @click="confirmClearAllData"
+          >
+            <Spinner v-if="isClearingData" size="sm" />
+            {{ isClearingData ? getMessage('clearingStatus') : getMessage('confirmClearButton') }}
+          </Button>
+        </div>
       </div>
-
-      <!-- Model Cache Management Section -->
-      <ModelCacheManagement
-        :cache-stats="cacheStats"
-        :is-managing-cache="isManagingCache"
-        @cleanup-cache="cleanupCache"
-        @clear-all-cache="clearAllCache"
-      />
-    </div>
-
-    <div class="footer">
-      <p class="footer-text">chrome mcp server for ai</p>
-    </div>
-
-    <ConfirmDialog
-      :visible="showClearConfirmation"
-      :title="getMessage('confirmClearDataTitle')"
-      :message="getMessage('clearDataWarningMessage')"
-      :items="[
-        getMessage('clearDataList1'),
-        getMessage('clearDataList2'),
-        getMessage('clearDataList3'),
-      ]"
-      :warning="getMessage('clearDataIrreversibleWarning')"
-      icon="⚠️"
-      :confirm-text="getMessage('confirmClearButton')"
-      :cancel-text="getMessage('cancelButton')"
-      :confirming-text="getMessage('clearingStatus')"
-      :is-confirming="isClearingData"
-      @confirm="confirmClearAllData"
-      @cancel="hideClearDataConfirmation"
-    />
+    </Dialog>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, shallowRef, type Component } from 'vue';
+import {
+  RefreshCw,
+  Zap,
+  Cpu,
+  Check,
+  AlertTriangle,
+  RotateCcw,
+  FileText,
+  Database,
+  Layers,
+  Box,
+  Trash2,
+  HardDrive,
+  Package,
+  Eraser,
+  Copy,
+  CheckCheck,
+} from 'lucide-vue-next';
+
+import { Button, Card, Input, Badge, Dialog, Spinner } from '@/components/ui';
 import {
   PREDEFINED_MODELS,
   type ModelPreset,
@@ -269,21 +385,11 @@ import {
 import { BACKGROUND_MESSAGE_TYPES } from '@/common/message-types';
 import { getMessage } from '@/utils/i18n';
 
-import ConfirmDialog from './components/ConfirmDialog.vue';
-import ProgressIndicator from './components/ProgressIndicator.vue';
-import ModelCacheManagement from './components/ModelCacheManagement.vue';
-import {
-  DocumentIcon,
-  DatabaseIcon,
-  BoltIcon,
-  TrashIcon,
-  CheckIcon,
-  TabIcon,
-  VectorIcon,
-} from './components/icons';
+const version = '0.0.6';
 
 const nativeConnectionStatus = ref<'unknown' | 'connected' | 'disconnected'>('unknown');
 const isConnecting = ref(false);
+const isRefreshing = ref(false);
 const nativeServerPort = ref<number>(12306);
 
 const serverStatus = ref<{
@@ -300,6 +406,7 @@ const showMcpConfig = computed(() => {
 });
 
 const copyButtonText = ref(getMessage('copyConfigButton'));
+const copyIcon = shallowRef<Component>(Copy);
 
 const mcpConfigJson = computed(() => {
   const port = serverStatus.value.port || nativeServerPort.value;
@@ -321,7 +428,7 @@ const modelSwitchProgress = ref('');
 const modelDownloadProgress = ref<number>(0);
 const isModelDownloading = ref(false);
 const modelInitializationStatus = ref<'idle' | 'downloading' | 'initializing' | 'ready' | 'error'>(
-  'idle',
+  'idle'
 );
 const modelErrorMessage = ref<string>('');
 const modelErrorType = ref<'network' | 'file' | 'unknown' | ''>('');
@@ -345,7 +452,6 @@ const isSemanticEngineInitializing = ref(false);
 const semanticEngineInitProgress = ref('');
 const semanticEngineLastUpdated = ref<number | null>(null);
 
-// Cache management
 const isManagingCache = ref(false);
 const cacheStats = ref<{
   totalSize: number;
@@ -368,18 +474,17 @@ const availableModels = computed(() => {
   }));
 });
 
-const getStatusClass = () => {
+const formatTime = (timestamp: number) => {
+  return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const getStatusDotClass = () => {
   if (nativeConnectionStatus.value === 'connected') {
-    if (serverStatus.value.isRunning) {
-      return 'bg-emerald-500';
-    } else {
-      return 'bg-yellow-500';
-    }
+    return serverStatus.value.isRunning ? 'status-dot--success' : 'status-dot--warning';
   } else if (nativeConnectionStatus.value === 'disconnected') {
-    return 'bg-red-500';
-  } else {
-    return 'bg-gray-500';
+    return 'status-dot--error';
   }
+  return 'status-dot--neutral';
 };
 
 const getStatusText = () => {
@@ -391,18 +496,17 @@ const getStatusText = () => {
     }
   } else if (nativeConnectionStatus.value === 'disconnected') {
     return getMessage('serviceNotConnectedStatus');
-  } else {
-    return getMessage('detectingStatus');
   }
+  return getMessage('detectingStatus');
 };
 
 const formatIndexSize = () => {
-  if (!storageStats.value?.indexSize) return '0 MB';
+  if (!storageStats.value?.indexSize) return '0';
   const sizeInMB = Math.round(storageStats.value.indexSize / (1024 * 1024));
-  return `${sizeInMB} MB`;
+  return `${sizeInMB}`;
 };
 
-const getModelDescription = (model: any) => {
+const getModelDescription = (model: { preset: string }) => {
   switch (model.preset) {
     case 'multilingual-e5-small':
       return getMessage('lightweightModelDescription');
@@ -440,17 +544,17 @@ const getSemanticEngineStatusText = () => {
   }
 };
 
-const getSemanticEngineStatusClass = () => {
+const getSemanticEngineStatusDotClass = () => {
   switch (semanticEngineStatus.value) {
     case 'ready':
-      return 'bg-emerald-500';
+      return 'status-dot--success';
     case 'initializing':
-      return 'bg-yellow-500';
+      return 'status-dot--warning';
     case 'error':
-      return 'bg-red-500';
+      return 'status-dot--error';
     case 'idle':
     default:
-      return 'bg-gray-500';
+      return 'status-dot--neutral';
   }
 };
 
@@ -493,6 +597,14 @@ const getSemanticEngineButtonText = () => {
   }
 };
 
+const getModelNameFromUrl = (url: string) => {
+  const match = url.match(/huggingface\.co\/([^/]+\/[^/]+)/);
+  if (match) {
+    return match[1];
+  }
+  return url.split('/').pop() || url;
+};
+
 const loadCacheStats = async () => {
   try {
     cacheStats.value = await getCacheStats();
@@ -508,7 +620,6 @@ const cleanupCache = async () => {
   isManagingCache.value = true;
   try {
     await cleanupModelCache();
-    // Refresh cache stats
     await loadCacheStats();
   } catch (error) {
     console.error('Failed to cleanup cache:', error);
@@ -523,7 +634,6 @@ const clearAllCache = async () => {
   isManagingCache.value = true;
   try {
     await clearModelCache();
-    // Refresh cache stats
     await loadCacheStats();
   } catch (error) {
     console.error('Failed to clear cache:', error);
@@ -541,7 +651,7 @@ const saveSemanticEngineState = async () => {
     // eslint-disable-next-line no-undef
     await chrome.storage.local.set({ semanticEngineState });
   } catch (error) {
-    console.error('保存语义引擎状态失败:', error);
+    console.error('Failed to save semantic engine state:', error);
   }
 };
 
@@ -549,15 +659,10 @@ const initializeSemanticEngine = async () => {
   if (isSemanticEngineInitializing.value) return;
 
   const isReinitialization = semanticEngineStatus.value === 'ready';
-  console.log(
-    `🚀 User triggered semantic engine ${isReinitialization ? 'reinitialization' : 'initialization'}`,
-  );
 
   isSemanticEngineInitializing.value = true;
   semanticEngineStatus.value = 'initializing';
-  semanticEngineInitProgress.value = isReinitialization
-    ? getMessage('semanticEngineInitializingStatus')
-    : getMessage('semanticEngineInitializingStatus');
+  semanticEngineInitProgress.value = getMessage('semanticEngineInitializingStatus');
   semanticEngineLastUpdated.value = Date.now();
 
   await saveSemanticEngineState();
@@ -569,18 +674,15 @@ const initializeSemanticEngine = async () => {
         type: BACKGROUND_MESSAGE_TYPES.INITIALIZE_SEMANTIC_ENGINE,
       })
       .catch((error) => {
-        console.error('❌ Error sending semantic engine initialization request:', error);
+        console.error('Error sending semantic engine initialization request:', error);
       });
 
     startSemanticEngineStatusPolling();
-
-    semanticEngineInitProgress.value = isReinitialization
-      ? getMessage('processingStatus')
-      : getMessage('processingStatus');
-  } catch (error: any) {
-    console.error('❌ Failed to send initialization request:', error);
+    semanticEngineInitProgress.value = getMessage('processingStatus');
+  } catch (error: unknown) {
+    console.error('Failed to send initialization request:', error);
     semanticEngineStatus.value = 'error';
-    semanticEngineInitProgress.value = `Failed to send initialization request: ${error?.message || 'Unknown error'}`;
+    semanticEngineInitProgress.value = `Failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
 
     await saveSemanticEngineState();
 
@@ -654,8 +756,6 @@ const checkSemanticEngineStatus = async () => {
 const retryModelInitialization = async () => {
   if (!currentModel.value) return;
 
-  console.log('🔄 Retrying model initialization...');
-
   modelErrorMessage.value = '';
   modelErrorType.value = '';
   modelInitializationStatus.value = 'downloading';
@@ -664,11 +764,9 @@ const retryModelInitialization = async () => {
   await switchModel(currentModel.value);
 };
 
-const updatePort = async (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  const newPort = Number(target.value);
+const updatePort = async (value: string | number) => {
+  const newPort = Number(value);
   nativeServerPort.value = newPort;
-
   await savePortPreference(newPort);
 };
 
@@ -678,7 +776,7 @@ const checkNativeConnection = async () => {
     const response = await chrome.runtime.sendMessage({ type: 'ping_native' });
     nativeConnectionStatus.value = response?.connected ? 'connected' : 'disconnected';
   } catch (error) {
-    console.error('检测 Native 连接状态失败:', error);
+    console.error('Failed to check native connection:', error);
     nativeConnectionStatus.value = 'disconnected';
   }
 };
@@ -697,11 +795,12 @@ const checkServerStatus = async () => {
       nativeConnectionStatus.value = response.connected ? 'connected' : 'disconnected';
     }
   } catch (error) {
-    console.error('检测服务器状态失败:', error);
+    console.error('Failed to check server status:', error);
   }
 };
 
 const refreshServerStatus = async () => {
+  isRefreshing.value = true;
   try {
     // eslint-disable-next-line no-undef
     const response = await chrome.runtime.sendMessage({
@@ -715,25 +814,26 @@ const refreshServerStatus = async () => {
       nativeConnectionStatus.value = response.connected ? 'connected' : 'disconnected';
     }
   } catch (error) {
-    console.error('刷新服务器状态失败:', error);
+    console.error('Failed to refresh server status:', error);
+  } finally {
+    setTimeout(() => {
+      isRefreshing.value = false;
+    }, 500);
   }
 };
 
 const copyMcpConfig = async () => {
   try {
     await navigator.clipboard.writeText(mcpConfigJson.value);
-    copyButtonText.value = '✅' + getMessage('configCopiedNotification');
+    copyButtonText.value = getMessage('configCopiedNotification');
+    copyIcon.value = CheckCheck;
 
     setTimeout(() => {
       copyButtonText.value = getMessage('copyConfigButton');
+      copyIcon.value = Copy;
     }, 2000);
   } catch (error) {
-    console.error('复制配置失败:', error);
-    copyButtonText.value = '❌' + getMessage('networkErrorMessage');
-
-    setTimeout(() => {
-      copyButtonText.value = getMessage('copyConfigButton');
-    }, 2000);
+    console.error('Failed to copy config:', error);
   }
 };
 
@@ -746,7 +846,6 @@ const testNativeConnection = async () => {
       await chrome.runtime.sendMessage({ type: 'disconnect_native' });
       nativeConnectionStatus.value = 'disconnected';
     } else {
-      console.log(`尝试连接到端口: ${nativeServerPort.value}`);
       // eslint-disable-next-line no-undef
       const response = await chrome.runtime.sendMessage({
         type: 'connectNative',
@@ -754,15 +853,13 @@ const testNativeConnection = async () => {
       });
       if (response && response.success) {
         nativeConnectionStatus.value = 'connected';
-        console.log('连接成功:', response);
         await savePortPreference(nativeServerPort.value);
       } else {
         nativeConnectionStatus.value = 'disconnected';
-        console.error('连接失败:', response);
       }
     }
   } catch (error) {
-    console.error('测试连接失败:', error);
+    console.error('Connection test failed:', error);
     nativeConnectionStatus.value = 'disconnected';
   } finally {
     isConnecting.value = false;
@@ -781,32 +878,22 @@ const loadModelPreference = async () => {
 
     if (result.selectedModel) {
       const storedModel = result.selectedModel as string;
-      console.log('📋 Stored model from storage:', storedModel);
-
       if (PREDEFINED_MODELS[storedModel as ModelPreset]) {
         currentModel.value = storedModel as ModelPreset;
-        console.log(`✅ Loaded valid model: ${currentModel.value}`);
       } else {
-        console.warn(
-          `⚠️ Stored model "${storedModel}" not found in PREDEFINED_MODELS, using default`,
-        );
         currentModel.value = 'multilingual-e5-small';
         await saveModelPreference(currentModel.value);
       }
     } else {
-      console.log('⚠️ No model found in storage, using default');
       currentModel.value = 'multilingual-e5-small';
       await saveModelPreference(currentModel.value);
     }
 
     selectedVersion.value = 'quantized';
-    console.log('✅ Using quantized version (fixed)');
-
     await saveVersionPreference('quantized');
 
     if (result.modelState) {
       const modelState = result.modelState;
-
       if (modelState.status === 'ready') {
         modelInitializationStatus.value = 'ready';
         modelDownloadProgress.value = modelState.downloadProgress || 100;
@@ -815,7 +902,6 @@ const loadModelPreference = async () => {
         modelInitializationStatus.value = 'idle';
         modelDownloadProgress.value = 0;
         isModelDownloading.value = false;
-
         await saveModelState();
       }
     } else {
@@ -839,7 +925,7 @@ const loadModelPreference = async () => {
       semanticEngineStatus.value = 'idle';
     }
   } catch (error) {
-    console.error('❌ 加载模型偏好失败:', error);
+    console.error('Failed to load model preference:', error);
   }
 };
 
@@ -848,7 +934,7 @@ const saveModelPreference = async (model: ModelPreset) => {
     // eslint-disable-next-line no-undef
     await chrome.storage.local.set({ selectedModel: model });
   } catch (error) {
-    console.error('保存模型偏好失败:', error);
+    console.error('Failed to save model preference:', error);
   }
 };
 
@@ -857,7 +943,7 @@ const saveVersionPreference = async (version: 'full' | 'quantized' | 'compressed
     // eslint-disable-next-line no-undef
     await chrome.storage.local.set({ selectedVersion: version });
   } catch (error) {
-    console.error('保存版本偏好失败:', error);
+    console.error('Failed to save version preference:', error);
   }
 };
 
@@ -865,9 +951,8 @@ const savePortPreference = async (port: number) => {
   try {
     // eslint-disable-next-line no-undef
     await chrome.storage.local.set({ nativeServerPort: port });
-    console.log(`端口偏好已保存: ${port}`);
   } catch (error) {
-    console.error('保存端口偏好失败:', error);
+    console.error('Failed to save port preference:', error);
   }
 };
 
@@ -877,10 +962,9 @@ const loadPortPreference = async () => {
     const result = await chrome.storage.local.get(['nativeServerPort']);
     if (result.nativeServerPort) {
       nativeServerPort.value = result.nativeServerPort;
-      console.log(`端口偏好已加载: ${result.nativeServerPort}`);
     }
   } catch (error) {
-    console.error('加载端口偏好失败:', error);
+    console.error('Failed to load port preference:', error);
   }
 };
 
@@ -895,7 +979,7 @@ const saveModelState = async () => {
     // eslint-disable-next-line no-undef
     await chrome.storage.local.set({ modelState });
   } catch (error) {
-    console.error('保存模型状态失败:', error);
+    console.error('Failed to save model state:', error);
   }
 };
 
@@ -935,7 +1019,7 @@ const startModelStatusMonitoring = () => {
         }
       }
     } catch (error) {
-      console.error('获取模型状态失败:', error);
+      console.error('Failed to get model status:', error);
     }
   }, 1000);
 };
@@ -973,8 +1057,6 @@ const refreshStorageStats = async () => {
 
   isRefreshingStats.value = true;
   try {
-    console.log('🔄 Refreshing storage statistics...');
-
     // eslint-disable-next-line no-undef
     const response = await chrome.runtime.sendMessage({
       type: 'get_storage_stats',
@@ -988,9 +1070,7 @@ const refreshStorageStats = async () => {
         indexSize: response.stats.indexSize || 0,
         isInitialized: response.stats.isInitialized || false,
       };
-      console.log('✅ Storage stats refreshed:', storageStats.value);
     } else {
-      console.error('❌ Failed to get storage stats:', response?.error);
       storageStats.value = {
         indexedPages: 0,
         totalDocuments: 0,
@@ -1000,7 +1080,7 @@ const refreshStorageStats = async () => {
       };
     }
   } catch (error) {
-    console.error('❌ Error refreshing storage stats:', error);
+    console.error('Error refreshing storage stats:', error);
     storageStats.value = {
       indexedPages: 0,
       totalDocuments: 0,
@@ -1024,8 +1104,6 @@ const confirmClearAllData = async () => {
   clearDataProgress.value = getMessage('clearingStatus');
 
   try {
-    console.log('🗑️ Starting to clear all data...');
-
     // eslint-disable-next-line no-undef
     const response = await chrome.runtime.sendMessage({
       type: 'clear_all_data',
@@ -1033,8 +1111,6 @@ const confirmClearAllData = async () => {
 
     if (response && response.success) {
       clearDataProgress.value = getMessage('dataClearedNotification');
-      console.log('✅ All data cleared successfully');
-
       await refreshStorageStats();
 
       setTimeout(() => {
@@ -1044,9 +1120,9 @@ const confirmClearAllData = async () => {
     } else {
       throw new Error(response?.error || 'Failed to clear data');
     }
-  } catch (error: any) {
-    console.error('❌ Failed to clear all data:', error);
-    clearDataProgress.value = `Failed to clear data: ${error?.message || 'Unknown error'}`;
+  } catch (error: unknown) {
+    console.error('Failed to clear all data:', error);
+    clearDataProgress.value = `Failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
 
     setTimeout(() => {
       clearDataProgress.value = '';
@@ -1057,12 +1133,7 @@ const confirmClearAllData = async () => {
 };
 
 const switchModel = async (newModel: ModelPreset) => {
-  console.log(`🔄 switchModel called with newModel: ${newModel}`);
-
-  if (isModelSwitching.value) {
-    console.log('⏸️ Model switch already in progress, skipping');
-    return;
-  }
+  if (isModelSwitching.value) return;
 
   const isSameModel = newModel === currentModel.value;
   const currentModelInfo = currentModel.value
@@ -1071,26 +1142,7 @@ const switchModel = async (newModel: ModelPreset) => {
   const newModelInfo = getModelInfo(newModel);
   const isDifferentDimension = currentModelInfo.dimension !== newModelInfo.dimension;
 
-  console.log(`📊 Switch analysis:`);
-  console.log(`   - Same model: ${isSameModel} (${currentModel.value} -> ${newModel})`);
-  console.log(
-    `   - Current dimension: ${currentModelInfo.dimension}, New dimension: ${newModelInfo.dimension}`,
-  );
-  console.log(`   - Different dimension: ${isDifferentDimension}`);
-
-  if (isSameModel && !isDifferentDimension) {
-    console.log('✅ Same model and dimension - no need to switch');
-    return;
-  }
-
-  const switchReasons = [];
-  if (!isSameModel) switchReasons.push('different model');
-  if (isDifferentDimension) switchReasons.push('different dimension');
-
-  console.log(`🚀 Switching model due to: ${switchReasons.join(', ')}`);
-  console.log(
-    `📋 Model: ${currentModel.value} (${currentModelInfo.dimension}D) -> ${newModel} (${newModelInfo.dimension}D)`,
-  );
+  if (isSameModel && !isDifferentDimension) return;
 
   isModelSwitching.value = true;
   modelSwitchProgress.value = getMessage('switchingModelStatus');
@@ -1120,13 +1172,6 @@ const switchModel = async (newModel: ModelPreset) => {
     if (response && response.success) {
       currentModel.value = newModel;
       modelSwitchProgress.value = getMessage('successNotification');
-      console.log(
-        '模型切换成功:',
-        newModel,
-        'version: quantized',
-        'dimension:',
-        newModelInfo.dimension,
-      );
 
       modelInitializationStatus.value = 'ready';
       isModelDownloading.value = false;
@@ -1138,14 +1183,14 @@ const switchModel = async (newModel: ModelPreset) => {
     } else {
       throw new Error(response?.error || 'Model switch failed');
     }
-  } catch (error: any) {
-    console.error('模型切换失败:', error);
-    modelSwitchProgress.value = `Model switch failed: ${error?.message || 'Unknown error'}`;
+  } catch (error: unknown) {
+    console.error('Model switch failed:', error);
+    modelSwitchProgress.value = `Failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
 
     modelInitializationStatus.value = 'error';
     isModelDownloading.value = false;
 
-    const errorMessage = error?.message || '未知错误';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     if (
       errorMessage.includes('network') ||
       errorMessage.includes('fetch') ||
@@ -1180,7 +1225,6 @@ const setupServerStatusListener = () => {
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === BACKGROUND_MESSAGE_TYPES.SERVER_STATUS_CHANGED && message.payload) {
       serverStatus.value = message.payload;
-      console.log('Server status updated:', message.payload);
     }
   });
 };
@@ -1202,719 +1246,3 @@ onUnmounted(() => {
   stopSemanticEngineStatusPolling();
 });
 </script>
-
-<style scoped>
-.popup-container {
-  background: #f1f5f9;
-  border-radius: 24px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-.header {
-  flex-shrink: 0;
-  padding-left: 20px;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0;
-}
-
-.settings-button {
-  padding: 8px;
-  border-radius: 50%;
-  color: #64748b;
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.settings-button:hover {
-  background: #e2e8f0;
-  color: #1e293b;
-}
-
-.content {
-  flex-grow: 1;
-  padding: 8px 24px;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.content::-webkit-scrollbar {
-  display: none;
-}
-.status-card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.status-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #64748b;
-  margin-bottom: 8px;
-}
-
-.status-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.status-dot {
-  height: 8px;
-  width: 8px;
-  border-radius: 50%;
-}
-
-.status-dot.bg-emerald-500 {
-  background-color: #10b981;
-}
-
-.status-dot.bg-red-500 {
-  background-color: #ef4444;
-}
-
-.status-dot.bg-yellow-500 {
-  background-color: #eab308;
-}
-
-.status-dot.bg-gray-500 {
-  background-color: #6b7280;
-}
-
-.status-text {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.model-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #64748b;
-  margin-bottom: 4px;
-}
-
-.model-name {
-  font-weight: 600;
-  color: #7c3aed;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-.stats-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  padding: 16px;
-}
-
-.stats-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.stats-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #64748b;
-}
-
-.stats-icon {
-  padding: 8px;
-  border-radius: 8px;
-}
-
-.stats-icon.violet {
-  background: #ede9fe;
-  color: #7c3aed;
-}
-
-.stats-icon.teal {
-  background: #ccfbf1;
-  color: #0d9488;
-}
-
-.stats-icon.blue {
-  background: #dbeafe;
-  color: #2563eb;
-}
-
-.stats-icon.green {
-  background: #dcfce7;
-  color: #16a34a;
-}
-
-.stats-value {
-  font-size: 30px;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0;
-}
-
-.section {
-  margin-bottom: 24px;
-}
-
-.secondary-button {
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #cbd5e1;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.secondary-button:hover:not(:disabled) {
-  background: #e2e8f0;
-  border-color: #94a3b8;
-}
-
-.secondary-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.primary-button {
-  background: #3b82f6;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.primary-button:hover {
-  background: #2563eb;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 12px;
-}
-.current-model-card {
-  background: linear-gradient(135deg, #faf5ff, #f3e8ff);
-  border: 1px solid #e9d5ff;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
-
-.current-model-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.current-model-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #64748b;
-  margin: 0;
-}
-
-.current-model-badge {
-  background: #8b5cf6;
-  color: white;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 6px;
-}
-
-.current-model-name {
-  font-size: 16px;
-  font-weight: 700;
-  color: #7c3aed;
-  margin: 0;
-}
-
-.model-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.model-card {
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
-  cursor: pointer;
-  border: 1px solid #e5e7eb;
-  transition: all 0.2s ease;
-}
-
-.model-card:hover {
-  border-color: #8b5cf6;
-}
-
-.model-card.selected {
-  border: 2px solid #8b5cf6;
-  background: #faf5ff;
-}
-
-.model-card.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.model-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.model-info {
-  flex: 1;
-}
-
-.model-name {
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0 0 4px 0;
-}
-
-.model-name.selected-text {
-  color: #7c3aed;
-}
-
-.model-description {
-  font-size: 14px;
-  color: #64748b;
-  margin: 0;
-}
-
-.check-icon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  background: #8b5cf6;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.model-tags {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-}
-.model-tag {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 9999px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.model-tag.performance {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.model-tag.size {
-  background: #ddd6fe;
-  color: #5b21b6;
-}
-
-.model-tag.dimension {
-  background: #e5e7eb;
-  color: #4b5563;
-}
-
-.config-card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.semantic-engine-card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.semantic-engine-status {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.semantic-engine-button {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: #8b5cf6;
-  color: white;
-  font-weight: 600;
-  padding: 12px 16px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-}
-
-.semantic-engine-button:hover:not(:disabled) {
-  background: #7c3aed;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.semantic-engine-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.status-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.refresh-status-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 14px;
-  color: #64748b;
-  transition: all 0.2s ease;
-}
-
-.refresh-status-button:hover {
-  background: #f1f5f9;
-  color: #374151;
-}
-
-.status-timestamp {
-  font-size: 12px;
-  color: #9ca3af;
-  margin-top: 4px;
-}
-
-.mcp-config-section {
-  border-top: 1px solid #f1f5f9;
-}
-
-.mcp-config-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.mcp-config-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #64748b;
-  margin: 0;
-}
-
-.copy-config-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 14px;
-  color: #64748b;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.copy-config-button:hover {
-  background: #f1f5f9;
-  color: #374151;
-}
-
-.mcp-config-content {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 12px;
-  overflow-x: auto;
-}
-
-.mcp-config-json {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 12px;
-  line-height: 1.4;
-  color: #374151;
-  margin: 0;
-  white-space: pre;
-  overflow-x: auto;
-}
-
-.port-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.port-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #64748b;
-}
-
-.port-input {
-  display: block;
-  width: 100%;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  padding: 12px;
-  font-size: 14px;
-  background: #f8fafc;
-}
-
-.port-input:focus {
-  outline: none;
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-}
-
-.connect-button {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: #8b5cf6;
-  color: white;
-  font-weight: 600;
-  padding: 12px 16px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-}
-
-.connect-button:hover:not(:disabled) {
-  background: #7c3aed;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.connect-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.error-card {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.error-content {
-  flex: 1;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.error-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.error-details {
-  flex: 1;
-}
-
-.error-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #dc2626;
-  margin: 0 0 4px 0;
-}
-
-.error-message {
-  font-size: 14px;
-  color: #991b1b;
-  margin: 0 0 8px 0;
-  font-weight: 500;
-}
-
-.error-suggestion {
-  font-size: 13px;
-  color: #7f1d1d;
-  margin: 0;
-  line-height: 1.4;
-}
-
-.retry-button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #dc2626;
-  color: white;
-  font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-.retry-button:hover:not(:disabled) {
-  background: #b91c1c;
-}
-
-.retry-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.danger-button {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: white;
-  border: 1px solid #d1d5db;
-  color: #374151;
-  font-weight: 600;
-  padding: 12px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-top: 16px;
-}
-
-.danger-button:hover:not(:disabled) {
-  border-color: #ef4444;
-  color: #dc2626;
-}
-
-.danger-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.icon-small {
-  width: 14px;
-  height: 14px;
-}
-
-.icon-default {
-  width: 20px;
-  height: 20px;
-}
-
-.icon-medium {
-  width: 24px;
-  height: 24px;
-}
-.footer {
-  padding: 16px;
-  margin-top: auto;
-}
-
-.footer-text {
-  text-align: center;
-  font-size: 12px;
-  color: #94a3b8;
-  margin: 0;
-}
-
-@media (max-width: 320px) {
-  .popup-container {
-    width: 100%;
-    height: 100vh;
-    border-radius: 0;
-  }
-
-  .header {
-    padding: 24px 20px 12px;
-  }
-
-  .content {
-    padding: 8px 20px;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .config-card {
-    padding: 16px;
-    gap: 12px;
-  }
-
-  .current-model-card {
-    padding: 12px;
-    margin-bottom: 12px;
-  }
-
-  .stats-card {
-    padding: 12px;
-  }
-
-  .stats-value {
-    font-size: 24px;
-  }
-}
-</style>

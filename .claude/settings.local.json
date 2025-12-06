@@ -5,7 +5,11 @@
       "Bash(npm run build:shared:*)",
       "Bash(npx tsup)",
       "Bash(npx tsc:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(find:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm build:extension:*)",
+      "Bash(pnpm lint:*)"
     ],
     "deny": [],
     "ask": []

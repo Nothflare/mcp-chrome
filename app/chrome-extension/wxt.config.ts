@@ -1,7 +1,11 @@
 import { defineConfig } from 'wxt';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { config } from 'dotenv';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 config({ path: resolve(process.cwd(), '.env') });
 config({ path: resolve(process.cwd(), '.env.local') });
@@ -84,6 +88,11 @@ export default defineConfig({
         ],
       }) as any,
     ],
+    resolve: {
+      alias: {
+        '@': resolve(__dirname, './'),
+      },
+    },
     build: {
       // 我们的构建产物需要兼容到es6
       target: 'es2015',
