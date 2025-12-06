@@ -27,6 +27,12 @@ export const TOOL_NAMES = {
     SEND_COMMAND_TO_INJECT_SCRIPT: 'chrome_send_command_to_inject_script',
     CONSOLE: 'chrome_console',
     FILE_UPLOAD: 'chrome_upload_file',
+    // Tab group tools
+    CREATE_TAB_GROUP: 'chrome_create_tab_group',
+    UPDATE_TAB_GROUP: 'chrome_update_tab_group',
+    UNGROUP_TABS: 'chrome_ungroup_tabs',
+    MOVE_TABS_TO_GROUP: 'chrome_move_tabs_to_group',
+    LIST_TAB_GROUPS: 'chrome_list_tab_groups',
   },
 };
 
@@ -586,6 +592,105 @@ export const TOOL_SCHEMAS: Tool[] = [
         },
       },
       required: ['selector'],
+    },
+  },
+  {
+    name: TOOL_NAMES.BROWSER.CREATE_TAB_GROUP,
+    description: 'Create a new tab group from one or more tabs',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tabIds: {
+          type: 'array',
+          items: { type: 'number' },
+          description: 'Array of tab IDs to group together',
+        },
+        title: {
+          type: 'string',
+          description: 'Optional title for the tab group',
+        },
+        color: {
+          type: 'string',
+          enum: ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'],
+          description: 'Optional color for the tab group',
+        },
+      },
+      required: ['tabIds'],
+    },
+  },
+  {
+    name: TOOL_NAMES.BROWSER.UPDATE_TAB_GROUP,
+    description: 'Update an existing tab group (title, color, or collapsed state)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        groupId: {
+          type: 'number',
+          description: 'The ID of the tab group to update',
+        },
+        title: {
+          type: 'string',
+          description: 'New title for the tab group',
+        },
+        color: {
+          type: 'string',
+          enum: ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'],
+          description: 'New color for the tab group',
+        },
+        collapsed: {
+          type: 'boolean',
+          description: 'Whether the tab group should be collapsed',
+        },
+      },
+      required: ['groupId'],
+    },
+  },
+  {
+    name: TOOL_NAMES.BROWSER.UNGROUP_TABS,
+    description: 'Remove tabs from their groups (ungroup them)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tabIds: {
+          type: 'array',
+          items: { type: 'number' },
+          description: 'Array of tab IDs to ungroup',
+        },
+      },
+      required: ['tabIds'],
+    },
+  },
+  {
+    name: TOOL_NAMES.BROWSER.MOVE_TABS_TO_GROUP,
+    description: 'Move tabs into an existing tab group',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tabIds: {
+          type: 'array',
+          items: { type: 'number' },
+          description: 'Array of tab IDs to move into the group',
+        },
+        groupId: {
+          type: 'number',
+          description: 'The ID of the target tab group',
+        },
+      },
+      required: ['tabIds', 'groupId'],
+    },
+  },
+  {
+    name: TOOL_NAMES.BROWSER.LIST_TAB_GROUPS,
+    description: 'List all tab groups in the browser',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        windowId: {
+          type: 'number',
+          description: 'Optional window ID to filter groups by window',
+        },
+      },
+      required: [],
     },
   },
 ];

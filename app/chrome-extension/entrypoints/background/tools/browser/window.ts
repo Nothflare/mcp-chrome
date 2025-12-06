@@ -18,6 +18,7 @@ class WindowTool extends BaseBrowserToolExecutor {
               url: tab.url || '',
               title: tab.title || '',
               active: tab.active || false,
+              groupId: tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE ? tab.groupId : undefined,
             };
           }) || [];
 

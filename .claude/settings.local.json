@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm build:shared:*)",
+      "Bash(npm run build:shared:*)",
+      "Bash(npx tsup)",
+      "Bash(npx tsc:*)",
+      "Bash(node:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
